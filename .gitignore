@@ -1,0 +1,6 @@
+.secrets/
+.openclaw/
+*.DS_Store
+summarizer-files/
+files/
+memory/

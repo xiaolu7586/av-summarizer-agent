@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Summarize Pro - EasyClaw Skill CLI Entry Point (cross-platform)"""
+import os
+import subprocess
+import sys
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+summarize_script = os.path.join(script_dir, "..", "scripts", "summarize.py")
+
+if not os.path.isfile(summarize_script):
+    print(f"❌ summarize.py not found: {summarize_script}", file=sys.stderr)
+    sys.exit(1)
+
+result = subprocess.run([sys.executable, summarize_script] + sys.argv[1:])
+sys.exit(result.returncode)
