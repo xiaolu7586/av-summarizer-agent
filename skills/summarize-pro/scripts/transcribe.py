@@ -69,8 +69,41 @@ def _load_auth():
         return api_key, base_url.rstrip("/"), "env"
 
     # Priority 3: ~/.openclaw/ runtime (OpenClaw platform auto-inject)
-    userinfo_path = os.path.join(OPENCLAW_HOME, "identity", "openclaw-userinfo.json")
+    # Sub-priority A: provider apiKey → Bearer
+    # Sub-priority B: provider headers (e.g. x-api-key) → passthrough
+    # Sub-priority C: userinfo uid/token → X-Auth-* headers
     config_path = os.path.join(OPENCLAW_HOME, "openclaw.json")
+    userinfo_path = os.path.join(OPENCLAW_HOME, "identity", "openclaw-userinfo.json")
+    if os.path.isfile(config_path):
+        try:
+            with open(config_path) as f:
+                cfg = json.load(f)
+            providers = cfg.get("models", {}).get("providers", {})
+            base_url = None
+            api_key = None
+            extra_headers = {}
+            for provider in providers.values():
+                for k, v in provider.items():
+                    if re.search(r'base.?url', k, re.I) and isinstance(v, str) and v.startswith("http"):
+                        base_url = v.rstrip("/")
+                        break
+                if base_url:
+                    raw_key = provider.get("apiKey", "")
+                    if isinstance(raw_key, str):
+                        api_key = raw_key.strip()
+                    headers_obj = provider.get("headers", {})
+                    if isinstance(headers_obj, dict):
+                        extra_headers = {hk: hv for hk, hv in headers_obj.items()
+                                         if isinstance(hv, str) and hv.strip()}
+                    break
+            if base_url:
+                if api_key:
+                    return api_key, base_url, "openclaw-apikey"
+                if extra_headers:
+                    return json.dumps(extra_headers), base_url, "openclaw-headers"
+        except Exception:
+            pass
+
     if os.path.isfile(userinfo_path):
         try:
             with open(userinfo_path) as f:
@@ -79,7 +112,6 @@ def _load_auth():
             token_key = next(k for k in auth if re.search(r'token', k, re.I))
             uid   = auth[uid_key]
             token = auth[token_key]
-            # Read baseUrl from openclaw.json
             base_url = "https://api.openai.com/v1"
             if os.path.isfile(config_path):
                 with open(config_path) as f:
@@ -128,13 +160,19 @@ def transcribe(file_path, language=None):
         body += language.encode()
     body += f'\r\n--{boundary}--\r\n'.encode()
 
-    # Build auth header: Bearer for API key, X-Auth-* for openclaw runtime
+    # Build auth header based on auth_source
     if auth_source == "openclaw-runtime" and ":" in api_key:
         uid, token = api_key.split(":", 1)
         headers = {
             "X-Auth-Uid": uid,
             "X-Auth-Token": token,
             "Content-Type": f"multipart/form-data; boundary={boundary}"
+        }
+    elif auth_source == "openclaw-headers":
+        extra_headers = json.loads(api_key)
+        headers = {
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            **extra_headers
         }
     else:
         headers = {
