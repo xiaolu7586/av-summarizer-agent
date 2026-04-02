@@ -3,13 +3,14 @@
 summarize.py - Audio/Video Transcription + Scenario Analysis
 
 Cross-platform (macOS / Linux / Windows).
-Transcription: 平台转录 API (no user API Key needed).
+Transcription auth priority: .secrets/transcribe-config.json > TRANSCRIBE_API_KEY env > OpenClaw runtime.
 Scenario Recognition: Keyword matching (no API needed).
 Summarization: Handled by Agent using user-configured LLM (not in this script).
 Optional: ffmpeg (format conversion/compression), yt-dlp (URL download).
 """
 
 import argparse
+import json
 import os
 import platform
 import re
@@ -20,6 +21,9 @@ import tempfile
 from datetime import datetime
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE_ROOT = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..", ".."))
+SECRETS_PATH = os.path.join(WORKSPACE_ROOT, ".secrets", "transcribe-config.json")
+OPENCLAW_HOME = os.path.join(os.path.expanduser("~"), ".openclaw")
 
 
 # ─── Print helpers ───────────────────────────────────────
@@ -75,18 +79,40 @@ def install_hint(pkg):
 
 # ─── Check transcription availability ───────────────────
 def check_transcription_available():
-    """Check OpenClaw user identity exists (required for platform API)."""
-    openclaw_home = os.path.join(os.path.expanduser("~"), ".openclaw")
-    userinfo_path = os.path.join(openclaw_home, "identity", "openclaw-userinfo.json")
-    if os.path.isfile(userinfo_path):
-        print_info("Transcription: 平台转录 API")
+    """
+    Check transcription credentials with priority:
+      1. .secrets/transcribe-config.json  (user-configured via formData)
+      2. TRANSCRIBE_API_KEY env var
+      3. ~/.openclaw/ runtime (OpenClaw platform auto-inject)
+    """
+    # Priority 1: .secrets/transcribe-config.json
+    if os.path.isfile(SECRETS_PATH):
+        try:
+            with open(SECRETS_PATH) as f:
+                cfg = json.load(f)
+            if cfg.get("transcribe_api_key", "").strip():
+                print_info("Transcription: .secrets/transcribe-config.json")
+                return True
+        except Exception:
+            pass
+
+    # Priority 2: environment variable
+    if os.environ.get("TRANSCRIBE_API_KEY", "").strip():
+        print_info("Transcription: environment variable TRANSCRIBE_API_KEY")
         return True
 
-    print_error("OpenClaw user identity not found")
+    # Priority 3: OpenClaw runtime
+    userinfo_path = os.path.join(OPENCLAW_HOME, "identity", "openclaw-userinfo.json")
+    if os.path.isfile(userinfo_path):
+        print_info("Transcription: OpenClaw platform API")
+        return True
+
+    print_error("No transcription API credentials found.")
     print("")
-    print("Please ensure OpenClaw is properly installed and you are logged in.")
-    print(f"Expected: {userinfo_path}")
-    print("")
+    print("To enable audio/video transcription, configure one of:")
+    print("  Option 1 (recommended): Set transcribe_api_key in agent settings")
+    print("  Option 2: Set TRANSCRIBE_API_KEY environment variable")
+    print("  Option 3: Use an OpenClaw-compatible platform with built-in transcription")
     sys.exit(1)
 
 

@@ -1,30 +1,54 @@
 {
-  "id": "av-summarizer",
-  "name": "全能总结助手",
-  "description": "支持音视频、PDF、图片、网页、文本 8 种输入类型的智能总结助手。自动转录、场景识别、生成结构化 Markdown 报告，并输出思维导图 PNG。",
-  "model": "{YOUR_MODEL_ID}",
-  "os": [],
-  "skills": ["summarize-pro", "markmap-mindmap-export"],
-  "tools": { "allow": ["group:subagent"] },
+  "version": 1,
+  "name": "Universal Summarizer",
+  "emoji": "📝",
+  "description": "Smart summarization assistant supporting 8 input types: audio, video, PDF, images, web pages, and text. Auto-transcribes, recognizes scenes, generates structured Markdown reports, and exports mind maps as PNG.",
+  "headline": "Summarize audio, video, PDFs, images, and web pages into structured reports",
+  "category": "productivity",
+  "author": "xiaolu7586",
+  "tags": [
+    "summarize",
+    "audio",
+    "video",
+    "pdf",
+    "mindmap"
+  ],
+  "model": "claude-sonnet-4-6",
+  "skills": {
+    "inline": [
+      "summarize-pro",
+      "markmap-mindmap-export"
+    ]
+  },
   "formData": {
     "fields": [
       {
         "key": "transcribe_api_key",
-        "label": "转录 API Key",
+        "label": "Transcription API Key",
         "type": "password",
         "required": false,
         "placeholder": "sk-...",
-        "description": "用于音视频转录的 OpenAI 兼容 API Key（支持 OpenAI Whisper、Deepgram 等）。仅处理音视频内容时需要；PDF、图片、网页、文本无需配置。"
+        "description": "OpenAI-compatible API Key for audio/video transcription (supports Whisper). Only required for audio/video content. Leave blank if using an OpenClaw-compatible platform."
       },
       {
         "key": "transcribe_base_url",
-        "label": "转录 API Base URL",
+        "label": "Transcription API Base URL",
         "type": "text",
         "required": false,
         "placeholder": "https://api.openai.com/v1",
-        "description": "转录 API 端点，留空默认使用 OpenAI。如使用其他兼容服务请填写对应地址。"
+        "description": "Transcription API endpoint. Leave blank to use OpenAI by default. Fill in if using a compatible third-party service."
       }
     ],
     "target": ".secrets/transcribe-config.json"
-  }
+  },
+  "suggested_prompts": [
+    "Summarize this YouTube video for me",
+    "Extract key points from this PDF and create a mind map",
+    "Transcribe this audio file and generate a structured report",
+    "Summarize this web page into bullet points"
+  ],
+  "featured": false,
+  "trust_level": "community",
+  "languages": [],
+  "avatar_url": "https://assets.clawdi.ai/assets/av-summarizer-agent.jpg"
 }
